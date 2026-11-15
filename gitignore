@@ -1,0 +1,29 @@
+# --- data and model outputs (recreated by dataset/ and the trainer; too large for git) ---
+data/
+outputs/
+checkpoints/
+*.tif
+*.tiff
+*.vrt
+*.h5
+*.zip
+*.npz
+*.pt
+*.pt.tmp
+*.pth
+*.part
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- notebooks and editors ---
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

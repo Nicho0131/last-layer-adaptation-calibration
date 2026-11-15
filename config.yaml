@@ -1,0 +1,204 @@
+# =============================================================================
+# DSM -> DTM calibration with test-time last-layer adaptation
+# Every value below is taken from last_layer_adaptation_calibration.ipynb (working notebook).
+#
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# PATHS:
+# -----------------------------------------------------------------------------
+paths:
+  base_dir: /content/drive/MyDrive/dsm_dtm_calibration_TTT
+
+  # --- inputs (cells 0, 8, 9, 12, 14, 18) ---
+  digimap_dtm_raw:      /content/drive/MyDrive/dsm_dtm_calibration_TTT/digimap_raw/digimap_dtm/v2
+  digimap_merge_vrt:    /content/drive/MyDrive/dsm_dtm_calibration_TTT/digimap_raw/digimap_dtm/v2/merge/digimap_merge_DTM_1m.vrt
+  dtm_30m_odn:          /content/drive/MyDrive/dsm_dtm_calibration_TTT/digimap_raw/digimap_dtm/v2/merge/digimap_30m_average_DTM.tif
+  dtm_30m_egm2008:      /content/drive/MyDrive/dsm_dtm_calibration_TTT/digimap_raw/digimap_dtm/v2/merge/digimap_30m_average_DTM_EGM2008.tif
+  copernicus_dsm:       /content/drive/MyDrive/dsm_dtm_calibration_TTT/gee/Copernicus_GLO30_v2.tif
+  gee_features:         /content/drive/MyDrive/dsm_dtm_calibration_TTT/gee/DSM_Calibration_Feature_Stack.tif
+  gee_features_aligned: /content/drive/MyDrive/dsm_dtm_calibration_TTT/gee/DSM_Calibration_Feature_Stack_Aligned.tif
+  geoid_grids:          /content/drive/MyDrive/dsm_dtm_calibration_TTT/pyproj/pyproj_grids
+
+  # --- model outputs (cells 21, 24, 34) ---
+  stats:           /content/drive/MyDrive/dsm_dtm_calibration_TTT/model_v3/stats/stats.json
+  checkpoints_dir: /content/drive/MyDrive/dsm_dtm_calibration_TTT/model_v3/checkpoints
+
+
+# -----------------------------------------------------------------------------
+# TRAINED MODELS (cells 34, 39, 100, 126)
+# -----------------------------------------------------------------------------
+checkpoints:
+  realistic_icesat:             # main model ("M0"), trained with sigma_eps = 1.0 m
+    path: /content/drive/MyDrive/dsm_dtm_calibration_TTT/model_v3/checkpoints/realistic_icesat/best.pt
+    icesat_noise_m: 1.0
+  no_augmentation:              # comparison model in the pre-training noise table, sigma_eps = 0.3 m
+    path: /content/drive/MyDrive/dsm_dtm_calibration_TTT/model_v3/checkpoints/no_augmentation/best.pt
+    icesat_noise_m: 0.3
+
+
+# -----------------------------------------------------------------------------
+# TEST SITES WITH REAL ICESat-2 ATL08 (cells 77, 84, 86, 100, 110)
+# Add tile_2, tile_3, ... with the same keys.
+# -----------------------------------------------------------------------------
+icesat_testing_dir: /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing
+
+sites:
+  tile_1:
+    paper_name: Site B (Northumberland)
+    digimap_raw:  /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/digimap/raw/tile 1
+    merge_vrt:    /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/digimap/stitched/tile 1/tile_1_merge.vrt
+    dtm_odn:      /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/digimap/stitched/tile 1/tile_1_merge_aligned.tif
+    dtm:          /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/digimap/stitched/tile 1/tile_1_merge_aligned_EGM2008.tif
+    copernicus:   /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/gee/copernicus/Copernicus_GLO30_2024_1.tif
+    gee_features: /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/gee/features/GEE_FEATURE_STACK_1.tif
+    feat:         /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/gee/features/GEE_FEATURE_STACK_1_aligned.tif
+    atl08_dir:    /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/nasa/atl08/tile 1
+    checkpoint:   /content/drive/MyDrive/dsm_dtm_calibration_TTT/model_v3/checkpoints/realistic_icesat/best.pt
+
+
+# -----------------------------------------------------------------------------
+# REFERENCE DEMs FOR COMPARISON (cells 109, 110)
+# -----------------------------------------------------------------------------
+baselines:
+  out_dir: /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/baseline_testing/sites
+  fabdem_zips:
+    - /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/fabdem/N50W010-N60E000_FABDEM_V1-2.zip
+    - /content/drive/MyDrive/dsm_dtm_calibration_TTT/icesat testing/fabdem/N50E000-N60E010_FABDEM_V1-2.zip
+  fathom_zips: []               # FathomDEM not downloaded yet (cell 111 skips it)
+
+
+# -----------------------------------------------------------------------------
+# GOOGLE EARTH ENGINE EXPORT (cells 5, 6, 81)
+# -----------------------------------------------------------------------------
+gee:
+  project: capable-hangout-510214-k5
+  # ee.Geometry.BBox(west, south, east, north), copied as written in cell 6
+  roi_bbox: [-2.077, 53.452, -1.021, 53.181]
+  scale_m: 30
+  export_crs: EPSG:27700
+  copernicus_collection: COPERNICUS/DEM/GLO30_2024_1
+  feature_year: 2021            # LAI (MODIS) and EVI (Sentinel-2) median over this year
+  max_cloud_pct: 70             # Sentinel-2 CLOUDY_PIXEL_PERCENTAGE filter
+  # band order of the exported 8-band stack
+  feature_bands: [Fused_DSM, Slope, Aspect, TRI, Canopy_Height, LAI, EVI, Building_Height]
+
+
+# -----------------------------------------------------------------------------
+# REAL ICESat-2 ATL08 (cells 82, 83, 95, 99, 106)
+# -----------------------------------------------------------------------------
+atl08:
+  version: "007"
+  start: "2022-01-01"
+  end: "2024-12-31"
+  max_download_gb: 5
+  beams: [gt1l, gt1r, gt2l, gt2r, gt3l, gt3r]
+  max_uncertainty_m: 5.0        # h_te_uncertainty cut when reading the files
+  filter:                       # the filter you chose in cell 106
+    min_ph: 20                  # ground photons per segment
+    max_dev: 3.0                # along-track deviation from running median (m)
+  along_track_window: 5         # segments in the running median
+
+
+# -----------------------------------------------------------------------------
+# VERTICAL DATUM (cells 12-14, 80): ODN -> EGM2008 via OSGM15
+# -----------------------------------------------------------------------------
+datum:
+  geoid_grids: [uk_os_OSGM15_GB.tif, us_nga_egm08_25.tif]
+  grid_url: https://cdn.proj.org
+  dsm_geoid_epsg: 3855          # EGM2008 height
+
+
+# -----------------------------------------------------------------------------
+# DATA PREPARATION (cells 19-21)
+# -----------------------------------------------------------------------------
+data:
+  # 9 model input channels built from the 8 GEE bands (aspect -> sin/cos)
+  channels: [DSM, Slope, Aspect_E, Aspect_N, TRI, Canopy, LAI, EVI, Bldg]
+  target_min: -30.0             # delta_h = DTM - DSM outside this range is dropped (m)
+  target_max: 10.0
+  split:                        # strips along the longer axis: train | gap | val | gap | test
+    val_frac: 0.15
+    test_frac: 0.15
+    gap_px: 128
+
+
+# -----------------------------------------------------------------------------
+# MODEL (cells 27, 32 MODEL_CFG). Keys = ProbabilisticCalibrator arguments.
+# -----------------------------------------------------------------------------
+model:
+  in_channels: 9
+  feature_dim: 32
+  hidden_dim: 64
+  pixel_m: 30.0                 # notebook reads this from the raster (PIXEL_M); must match your data
+  level_res_m: [1000.0, 4000.0, 16000.0]
+  diffuser_hid: 32
+  patch_size: 64
+  overlap: 32
+  win_batch: 64
+  sigma_min: 0.1
+  sigma_max: 30.0
+  grad_checkpoint: true
+  # chunk: 4096                 # pixels per diffuser call; not set in the notebook (class default 64*64)
+
+
+# -----------------------------------------------------------------------------
+# PRE-TRAINING (cells 24, 33, 37)
+# -----------------------------------------------------------------------------
+training:
+  run_name: realistic_icesat    # checkpoints go to <checkpoints_dir>/<run_name>
+  total_steps: 3000
+  lr: 3.0e-4
+  lr_min_factor: 0.05           # cosine schedule ends at lr * 0.05
+  warmup_steps: 150             # MSE on mu during warmup, then Gaussian NLL
+  beta: 0.5                     # beta-NLL; train_meta's default is 0.0, your runs used 0.5
+  accum_steps: 4
+  grad_clip: 1.0
+  use_amp: true                 # bf16 on compute capability >= 8.0, else fp16 + GradScaler
+  solve_on_cpu: true            # batched GPU solve issue on T4 + CUDA 13
+  seed: 42
+  resume: false
+  print_every: 5
+  val_every: 100
+  ckpt_every_min: 10
+
+
+# -----------------------------------------------------------------------------
+# TRAINING EPISODES (cell 26)
+# -----------------------------------------------------------------------------
+episodes:
+  crop_px: 2048
+  min_valid_frac: 0.5           # resample crops that are mostly nodata
+  icesat_noise_m: 1.0           # Gaussian noise added to simulated ICESat delta_h (0.3 for model testing)
+  n_queries: 4096               # off-track pixels scored per episode
+
+
+# -----------------------------------------------------------------------------
+# SIMULATED ICESat-2 TRACKS (cell 22, simulate_icesat_mask defaults)
+# -----------------------------------------------------------------------------
+icesat_sim:
+  rgt_spacing_km: [3.0, 40.0]   # log-uniform spacing between reference ground tracks
+  max_heading_deg: 15.0
+  pair_sep_km: 3.3
+  beam_sep_m: 90.0
+  along_step_m: 100.0
+  p_beam_drop: 0.2
+  p_cloud_gap: 0.3
+  gap_len_km: [1.0, 8.0]
+
+
+# -----------------------------------------------------------------------------
+# EVALUATION ON SITE A HELD-OUT BLOCKS (cells 30, 73)
+# -----------------------------------------------------------------------------
+evaluation:
+  block_km: 8.0                 # val/test strips are cut into blocks of this size
+  ctx_px: 64                    # context around each block (>= receptive field + one Hann window)
+  min_scored_px: 500            # skip blocks with fewer scored pixels
+  seed: 42
+  # redraw simulated tracks for test blocks with too few ICESat pixels (cell 73)
+  redraw:
+    min_icesat_px: 200
+    noise_m: 1.0
+    seed: 77
+    max_tries: 100
